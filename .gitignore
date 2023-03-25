@@ -1,2 +1,4 @@
 lf
 __pycache__
+.env
+*.pkl

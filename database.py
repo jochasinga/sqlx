@@ -1,16 +1,67 @@
 import psycopg2
 from psycopg2 import OperationalError
-import schemas
+
+
+class TableField():
+    def __init__(
+        self, name: str, type: str, unique: bool,
+        primary_key: bool, index: bool, not_null: bool,
+    ):
+        self.name = name
+        self.type = type
+        self.unique = unique
+        self.primary_key = primary_key
+        self.index = index
+        self.not_null = not_null
+
+
+class CreateTableConfig():
+    def __init__(self, name: str, fields: list[TableField]):
+        self.name = name
+        self.fields = fields
+
+
+class DatabaseInfo:
+    def __init__(self, name=None, user=None, password=None, host=None, url=None):
+        self.name = name
+        self.user = user
+        self.password = password
+        self.host = host
+        self.url = url
+
 
 class Database:
 
-    def __init__(self, db_name='postgres', db_user='postgres', db_password='postgres', db_host='127.0.0.1'):
-        self.connection = self.create_connection(db_name, db_user, db_password, db_host)
+    connection = None
+    name: str|None = None
+    user: str|None = None
+    password: str|None = None
+    host: str|None = None
+    url: str|None = None
 
 
     def close(self):
-        if self.connection:
+        if self.connection is not None:
             self.connection.close()
+            self.name = None
+            self.user = None
+            self.password = None
+            self.host = None
+            self.url = None
+
+    def execute(self, query):
+        self.connection.autocommit = True
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(query)
+            colnames = [desc[0] for desc in cursor.description]
+            results = [colnames]
+            results.extend(cursor.fetchall())
+            return results
+        except OperationalError as e:
+            print(f"The error '{e}' occurred")
+        finally:
+            cursor.close()
 
 
     def execute_query(self, query):
@@ -18,18 +69,27 @@ class Database:
         cursor = self.connection.cursor()
         try:
             cursor.execute(query)
-            print("Query executed successfully")
+            return cursor.fetchall()
         except OperationalError as e:
             print(f"The error '{e}' occurred")
+        finally:
+            cursor.close()
 
 
-    def create_connection(self, db_name='postgres', db_user='postgres', db_password='postgres', db_host='127.0.0.1'):
+    def create_connection(self, db_name='postgres', db_user='postgres', db_password='postgres', db_host='127.0.0.1', url=None):
         connection = None
         try:
-            connection = psycopg2.connect(
-                database=db_name, user=db_user, password=db_password, host=db_host
-            )
-            print(f"Connection to PostgreSQL DB {db_name} successful")
+            if url is not None:
+                connection = psycopg2.connect(url)
+                self.url = url
+            else:
+                connection = psycopg2.connect(
+                    database=db_name, user=db_user, password=db_password, host=db_host
+                )
+                self.name = db_name
+                self.user = db_user
+                self.password = db_password
+                self.host = db_host
         except OperationalError as e:
             print(f"The error '{e}' occurred")
 
@@ -37,7 +97,7 @@ class Database:
         return connection
 
 
-    def create_database(self, database_name):
+    def create_database(self, database_name: str):
         create_db_query = f"""
         SELECT 'CREATE DATABASE {database_name}'
         WHERE NOT EXISTS (SELECT FROM pg_database
@@ -47,13 +107,12 @@ class Database:
         self.connection.autocommit = True
         cursor = self.connection.cursor()
         try:
-            # cursor.execute(f"SELECT 'CREATE DATABASE {database_name}' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{database_name}')")
             cursor.execute(f"CREATE DATABASE {database_name}")
-            print("Query executed successfully")
         except OperationalError as e:
             print(f"The error '{e}' occurred")
 
-    def get_rows(self, table_name, limit=10):
+
+    def get_rows(self, table_name: str, limit: int = 10):
         query = f"""
         SELECT * FROM {table_name} LIMIT {limit}
         """
@@ -61,13 +120,45 @@ class Database:
         cursor = self.connection.cursor()
         try:
             cursor.execute(query)
-            print("Query executed successfully")
             return cursor.fetchall()
         except OperationalError as e:
             print(f"The error '{e}' occurred")
 
+    def get_table_names(self, schema: str = 'public'):
+        query = f"""
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_type = 'BASE TABLE'
+        AND table_schema = '{schema}'
+        """
+        self.connection.autocommit = True
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(query)
+            return cursor.fetchall()
+        except OperationalError as e:
+            print(f"The error '{e}' occurred")
+        finally:
+            cursor.close()
 
-    def get_column_names(self, table_name):
+    def get_column_properties(self, table_name: str):
+        query = f"""
+        SELECT column_name, data_type, is_nullable, column_default
+        FROM information_schema.columns
+        WHERE table_name = '{table_name}'
+        """
+        self.connection.autocommit = True
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(query)
+            return cursor.fetchall()
+        except OperationalError as e:
+            print(f"The error '{e}' occurred")
+        finally:
+            cursor.close()
+
+
+    def get_column_names(self, table_name: str):
         query = f"""
         SELECT column_name
         FROM information_schema.columns
@@ -77,32 +168,24 @@ class Database:
         cursor = self.connection.cursor()
         try:
             cursor.execute(query)
-            print("Query executed successfully")
             return cursor.fetchall()
         except OperationalError as e:
             print(f"The error '{e}' occurred")
+        finally:
+            cursor.close()
 
-
-    def create_table(self, table: schemas.TableCreate):
+    def create_table(self, table: CreateTableConfig):
         clause = ""
-        for i, fields in enumerate(table.fields):
+        for i, field in enumerate(table.fields):
             clause += "\n\t\t"
-            # type = ""
-            # if fields.type == "int" and not fields.serial:
-            #     type = "INTEGER"
-            # elif fields.type == "int" and fields.serial:
-            #     type = "SERIAL"
-            # elif fields.type == "str":
-            #     type = "TEXT"
-
-            clause += f"{fields.name} {fields.type}"
-            if fields.unique:
+            clause += f"{field.name} {field.type}"
+            if field.unique:
                 clause += " UNIQUE"
-            if fields.primary_key:
+            if field.primary_key:
                 clause += " PRIMARY KEY"
-            if fields.index:
+            if field.index:
                 clause += " INDEX"
-            if fields.not_null:
+            if field.not_null:
                 clause += " NOT NULL"
 
             if i < len(table.fields) - 1:
@@ -113,7 +196,7 @@ class Database:
             {clause}
         )
         """
-        print('query: ', create_table_query)
+
         self.execute_query(create_table_query)
 
 
