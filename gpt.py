@@ -18,6 +18,7 @@ def get_sql(prompt: Prompt):
         presence_penalty=0.0,
         stop=["#", ";"]
     )
-    return "SELECT" + response.choices[0]["text"]
+
+    return response.choices[0]["text"]
 
 

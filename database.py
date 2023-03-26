@@ -49,15 +49,19 @@ class Database:
             self.host = None
             self.url = None
 
+
     def execute(self, query):
         self.connection.autocommit = True
         cursor = self.connection.cursor()
         try:
             cursor.execute(query)
-            colnames = [desc[0] for desc in cursor.description]
-            results = [colnames]
-            results.extend(cursor.fetchall())
-            return results
+            if cursor.description is not None:
+                colnames = [desc[0] for desc in cursor.description]
+                results = [colnames]
+                results.extend(cursor.fetchall())
+                return results
+
+            return None
         except OperationalError as e:
             print(f"The error '{e}' occurred")
         finally:

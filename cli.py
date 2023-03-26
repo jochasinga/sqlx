@@ -4,6 +4,7 @@ import os
 import app
 import gpt
 from database import DatabaseInfo
+from rich import print as pprint
 from rich.prompt import Prompt
 from rich.console import Console
 from rich.table import Table
@@ -95,18 +96,22 @@ def prompt():
     prompt.add_instruction(instruction)
     sql_str = gpt.get_sql(prompt)
     results = app.query(sql_str)
-    table = Table(title=sql_str)
-    column_names = results[0]
 
-    for col in column_names:
-        table.add_column(col, justify="right", style="cyan", no_wrap=True)
+    if results is not None:
+        table = Table(title=sql_str)
+        column_names = results[0]
 
-    for result in results[1:]:
-        items = [str(item) for item in list(result)]
-        table.add_row(*items)
+        for col in column_names:
+            table.add_column(col, justify="right", style="cyan", no_wrap=True)
 
-    console = Console()
-    console.print(table)
+        for result in results[1:]:
+            items = [str(item) for item in list(result)]
+            table.add_row(*items)
+
+        console = Console()
+        console.print(table)
+    else:
+        pprint("Transaction successful.")
 
 
 @cli.command()

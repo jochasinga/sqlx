@@ -8,7 +8,7 @@ class Prompt():
     def add_instruction(self, instruction: str):
         self.prompt += "#\n"
         self.prompt += f"### A query to { instruction }\n"
-        self.prompt += "SELECT"
+        # self.prompt += "SELECT"
 
     def get_prompt(self):
         return self.prompt
