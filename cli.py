@@ -49,17 +49,6 @@ def info():
     console.print(table)
 
 
-'''
-@cli.command()
-def table_names():
-    db_info = load_db_info()
-    app.connect_to_db(db_info.name, db_info.user, db_info.password, db_info.host, db_info.url)
-    table_names = app.get_table_names()
-    columns = Columns(table_names, equal=True, expand=True)
-    pprint(columns)
-'''
-
-
 @cli.command()
 def describe(table_name: str):
     db_info = load_db_info()
@@ -84,6 +73,25 @@ def describe(table_name: str):
 
 
 @cli.command()
+def show_tables():
+    db_info = load_db_info()
+    app.connect_to_db(db_info.name, db_info.user, db_info.password, db_info.host, db_info.url)
+    results = app.get_tables()
+    table = Table(title="Show Tables")
+    column_names = results[0]
+
+    for col in column_names:
+        table.add_column(col, justify="right", style="cyan", no_wrap=True)
+
+    for result in results[1:]:
+        items = [str(item) for item in list(result)]
+        table.add_row(*items)
+
+    console = Console()
+    console.print(table)
+
+
+@cli.command()
 def prompt():
     db_info = load_db_info()
     app.connect_to_db(db_info.name, db_info.user, db_info.password, db_info.host, db_info.url)
@@ -95,6 +103,10 @@ def prompt():
     instruction = Prompt.ask("Your prompt")
     prompt.add_instruction(instruction)
     sql_str = gpt.get_sql(prompt)
+    if sql_str == "":
+        pprint("No SQL generated.")
+        return
+
     results = app.query(sql_str)
 
     if results is not None:

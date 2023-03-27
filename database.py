@@ -128,6 +128,17 @@ class Database:
         except OperationalError as e:
             print(f"The error '{e}' occurred")
 
+    def get_tables(self, schema: str = 'public'):
+        query = f"""
+        SELECT *
+        FROM pg_catalog.pg_tables
+        WHERE schemaname != 'pg_catalog' AND
+        schemaname != 'information_schema' AND
+        schemaname = '{schema}';
+        """
+        return self.execute(query)
+
+
     def get_table_names(self, schema: str = 'public'):
         query = f"""
         SELECT table_name

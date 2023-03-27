@@ -61,5 +61,9 @@ def get_table_names(schema: str = 'public'):
     # db.close()
     return table_names
 
+def get_tables(schema: str = 'public'):
+    results = db.get_tables(schema)
+    return results
+
 def close_db():
     db.close()

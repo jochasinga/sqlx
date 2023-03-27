@@ -12,6 +12,14 @@ Set up a PostgreSQL database to connect to using a URL string or name, user, pas
 
 Forget the PostgreSQL database previously saved.
 
+### info
+
+Provide information of the current database.
+
+### show-tables
+
+Show all the tables in the current database.
+
 ### describe [TABLE_NAME]
 
 Show the `column_name`, `data_type`, `is_nullable`, and `column_default` of a table's column(s).
@@ -26,14 +34,14 @@ Convert a query in natural language to SQL query and show the formatted result t
 
 ```shell
 sqlx prompt
-Your prompt: list account with username = 'user1'
+Your prompt: get account that has username of user3
 ```
 
 Or inserting:
 
 ```shell
 sqlx prompt
-Your prompt: insert into account where username = 'user4' and email = 'user4@gmail.com'
+Your prompt: insert an account with username of 'user3' and email of 'user3@gmail.com'
 ```
 
 To use this, you need to have an API key from [OpenAI](openai.com). Create an `.env` file with `OPENAI_API_KEY` variable and place it in the top-level directory.
